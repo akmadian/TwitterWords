@@ -45,11 +45,43 @@ class TwitterStream(tweepy.StreamListener):
 
     def on_status(self, status):
         """What to do on new status"""
-        has_link = None
-        print(status)
+        # Check if the tweet is a retweet, if yes, break, if no, continue
+        print('_______________ New Tweet _______________')
+        print(status.text)
         tokenized_tweet = status.text.split()
+        if tokenized_tweet[0] == 'RT':
+            print('Stopping')
+            return True
+        else:
+            self.tweetops(status)
 
+    def on_error(self, status_code):
+        """What to do on error"""
+        print('Error -- SC >> ' + str(status_code))
+        if status_code == 420:
+            print('Status Code - 420 - Returned when an application is being rate limited.')
+            # returning False in on_data disconnects the stream
+            return False
+        if status_code == 406:
+            print('Status Code - 406 - Returned when an invalid format is specified in the request.')
+            return True
+
+    def on_exception(self, exception):
+        """What to do on exception"""
+        print('Exception -- ' + str(exception))
+        if 'Connection broken' in str(exception):
+            print('Connection broken exception')
+            pass
+        return True
+
+
+    @staticmethod
+    def tweetops(status):
+        has_link = None
+        print(status.text)
+        tokenized_tweet = status.text.split()
         #Check to see if the tweet is a retweet and take out 'RT' related tokens
+        print('Continuing')
         tokenized_tweet = tokenized_tweet[2:] \
             if tokenized_tweet[0] == 'RT' \
             else tokenized_tweet
@@ -92,12 +124,10 @@ class TwitterStream(tweepy.StreamListener):
             else:
                 lowercase_word = word.lower()
                 if lowercase_word in knownwords:
-                    print('update known word')
                     c.execute('UPDATE Words SET uses=? WHERE word=?',
                               (knownwords[lowercase_word] + 1,
                                lowercase_word))
                 else:
-                    print('unknown word')
                     c.execute('INSERT INTO Words(word, uses) VALUES(?, ?)',
                               (lowercase_word,
                                1))
@@ -120,25 +150,6 @@ class TwitterStream(tweepy.StreamListener):
         conn.commit()
         c.close()
         conn.close()
-        print('_' * 30)
-        return True
-
-    def on_error(self, status_code):
-        """What to do on error"""
-        print('Error -- SC >> ' + str(status_code))
-        if status_code == 420:
-            # returning False in on_data disconnects the stream
-            return False
-        if status_code == 406:
-            print('Status Code - 406 - Returned when an invalid format is specified in the request.')
-            return True
-
-    def on_exception(self, exception):
-        """What to do on exception"""
-        print('Exception -- ' + str(exception))
-        if 'Connection broken' in str(exception):
-            print('Connection broken exception')
-            pass
         return True
 
 
